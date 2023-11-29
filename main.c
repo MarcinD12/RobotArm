@@ -34,11 +34,17 @@ int gpioreadpins[6];
 
 int main() {
     printf("Running:");
+
+    //adc setup
     adc_init();
     adc_gpio_init(26);
     adc_gpio_init(27);
+
+    //led setup
     gpio_init(25);
     gpio_set_dir(25, GPIO_OUT);
+
+    //pwm pins setup
     gpio_set_function(motor1pwmA, GPIO_FUNC_PWM);
     gpio_set_function(motor1pwmB, GPIO_FUNC_PWM);
     gpio_set_function(motor2pwmA, GPIO_FUNC_PWM);
@@ -46,7 +52,8 @@ int main() {
     gpio_set_function(motor3pwmA, GPIO_FUNC_PWM);
     gpio_set_function(motor3pwmB, GPIO_FUNC_PWM);
     stdio_init_all();
-
+    
+    //buttons setup
     gpio_set_dir(motor1btnA, GPIO_IN);
     gpio_set_dir(motor1btnB, GPIO_IN);
     gpio_set_dir(motor2btnA, GPIO_IN);
@@ -85,6 +92,7 @@ int main() {
     pwm_set_wrap(SliceBMotor3, 16384);
     pwm_set_enabled(SliceBMotor3, true); 
 
+    uint EncoderAread;
 
     //ToMax(SliceA, ChannelA);
     uint PWMSlices[]={SliceAMotor1,SliceBMotor1,SliceAMotor2,SliceBMotor2,SliceAMotor3,SliceBMotor3};
@@ -120,7 +128,7 @@ int main() {
         }
         // printf("mask: ");
         // printf("%d\n",mask);
-        
+        EncoderAread=ADCread();
         sleep_ms(10);
 
 
@@ -184,10 +192,12 @@ void ToMin(uint slice,uint channel){
 int ADCread()
 {
     adc_select_input(0);
-    double RawBase = adc_read()*0.0488;//
+    double RawBase = adc_read();//
+    printf("base:%f\n",RawBase);
     //printf("%.0f\n",0-(-RawBase));
-    adc_select_input(0);
+    adc_select_input(1);
     double RawShoulder= adc_read();
+    printf("shoulder:%f\n",RawShoulder);
     return (int)RawBase;
     //printf("%f",RawShoulder);
 
