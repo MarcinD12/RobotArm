@@ -8,10 +8,10 @@
 
 const int motor1btnA=15;
 const int motor1btnB=14;
-const int motor2btnA=13;
-const int motor2btnB=12;
-const int motor3btnA=11;
-const int motor3btnB=10;
+const int ShoulderUpBtn=13;
+const int ShoulderDownBtn=12;
+const int BaseCwBtn=11;
+const int BaseCcwBtn=10;
 
 const int motor1pwmA=16;
 const int motor1pwmB=17;
@@ -20,21 +20,28 @@ const int motor2pwmB=19;
 const int motor3pwmA=20;
 const int motor3pwmB=21;
 
-
+const int basemax=2200;
+const int basemin=160;
+const int shouldermin=3200;
+const int shouldermax=2700;   
 
 void PWMMotor(uint slice,uint channel,int analogRead);
 void ToMax(uint slice,uint channel);
 void ToMin(uint slice,uint channel);
 void Blink();
-int ADCread();
+void ADCread(int *encoders);
 void ReadGPIO(int readgpio[]);
+void SetPWM(short pin,short dir);
 
-int motorpinout[6]={motor1btnA, motor1btnB,motor2btnA,motor2btnB,motor3btnA,motor3btnB};
+int motorpinout[6]={motor1btnA, motor1btnB,ShoulderUpBtn,ShoulderDownBtn,BaseCwBtn,BaseCcwBtn};
 int gpioreadpins[6];
 
+short PWMLevels[6]={0};
+uint PWMSlices[6];
+uint PWMChannels[6];
 int main() {
     printf("Running:");
-
+    int encoders[3]={0};
     //adc setup
     adc_init();
     adc_gpio_init(26);
@@ -56,10 +63,10 @@ int main() {
     //buttons setup
     gpio_set_dir(motor1btnA, GPIO_IN);
     gpio_set_dir(motor1btnB, GPIO_IN);
-    gpio_set_dir(motor2btnA, GPIO_IN);
-    gpio_set_dir(motor2btnB, GPIO_IN);
-    gpio_set_dir(motor3btnA, GPIO_IN);
-    gpio_set_dir(motor3btnB, GPIO_IN);
+    gpio_set_dir(ShoulderUpBtn, GPIO_IN);
+    gpio_set_dir(ShoulderDownBtn, GPIO_IN);
+    gpio_set_dir(BaseCwBtn, GPIO_IN);
+    gpio_set_dir(BaseCcwBtn, GPIO_IN);
     
     
     //Motor1 PWM setup
@@ -91,45 +98,93 @@ int main() {
     pwm_set_enabled(SliceAMotor3, true);
     pwm_set_wrap(SliceBMotor3, 16384);
     pwm_set_enabled(SliceBMotor3, true); 
+    PWMSlices[0]=SliceAMotor1;
+    PWMSlices[1]=SliceBMotor1;
+    PWMSlices[2]=SliceAMotor2;
+    PWMSlices[3]=SliceBMotor2;
+    PWMSlices[4]=SliceAMotor3;
+    PWMSlices[5]=SliceBMotor3;
 
-    uint EncoderAread;
+    PWMChannels[0]=ChannelAMotor1;
+    PWMChannels[1]=ChannelBMotor1;
+    PWMChannels[2]=ChannelAMotor2;
+    PWMChannels[3]=ChannelBMotor2;
+    PWMChannels[4]=ChannelAMotor3;
+    PWMChannels[5]=ChannelBMotor3;
+
 
     //ToMax(SliceA, ChannelA);
-    uint PWMSlices[]={SliceAMotor1,SliceBMotor1,SliceAMotor2,SliceBMotor2,SliceAMotor3,SliceBMotor3};
-    uint PWMChannels[]={ChannelAMotor1,ChannelBMotor1,ChannelAMotor2,ChannelBMotor2,ChannelAMotor3,ChannelBMotor3};
-    short PWMLevels[6]={0};
+    // PWMSlices[]={SliceAMotor1,SliceBMotor1,SliceAMotor2,SliceBMotor2,SliceAMotor3,SliceBMotor3};
+    // uint PWMChannels[]={ChannelAMotor1,ChannelBMotor1,ChannelAMotor2,ChannelBMotor2,ChannelAMotor3,ChannelBMotor3};
+
     uint MotorALvl=3600;
     for(;;)
     {   
         uint mask=0;
         ReadGPIO(gpioreadpins);
-        for (int i=5; i >= 0; i--)
-        { 
-            if(gpioreadpins[i]==1)
-            {
-                if (PWMLevels[i]>0 & PWMLevels[i]<=16384){
-                    PWMLevels[i]+=300;
-                }
-                else if(PWMLevels[i]+300>=16384)
-                    PWMLevels[i]=16384; 
-                else{
-                    PWMLevels[i]=3600;
-                }
-
-                pwm_set_chan_level(PWMSlices[i],PWMChannels[i],PWMLevels[i]);
-                mask=mask|(1u<<motorpinout[i]-1); //mask just for test
-                printf("Channel: %d level: %d\n",PWMChannels[i],PWMLevels[i]);
-            }
-            else
-            {
-                PWMLevels[i]=(PWMLevels[i]-1000>=0)?PWMLevels[i]-=1000:0;           
-                pwm_set_chan_level(PWMSlices[i],PWMChannels[i],PWMLevels[i]);
-            }
+        ADCread(encoders);
+        printf("base: %d\n",encoders[0]);
+        printf("shoulder: %d\n",encoders[1]);
+        // printf("shoulder: %f\n",encoders[2]);
+        //shoulder limits and increments
+        if(gpioreadpins[2]==1 && encoders[1]>shouldermax){
+            SetPWM(2,1);
         }
-        // printf("mask: ");
-        // printf("%d\n",mask);
-        EncoderAread=ADCread();
-        sleep_ms(10);
+        else{
+            SetPWM(2,0);
+        }
+
+        if(gpioreadpins[3]==1 && encoders[1]<shouldermin){
+            SetPWM(3,1);
+        }
+        else{
+            SetPWM(3,0);
+        }
+        //base limits and increment
+        if(gpioreadpins[4]==1 && encoders[0]<basemax){
+            SetPWM(4,1);
+        }
+        else{
+            SetPWM(4,0);
+        }
+
+        if(gpioreadpins[5]==1 && encoders[0]>basemin){
+            SetPWM(5,1);
+        }
+        else{
+            SetPWM(5,0);
+        }
+
+
+
+
+
+
+        ////
+        // for (int i=5; i >= 0; i--)
+        // { 
+        //     if(gpioreadpins[i]==1)
+        //     {
+        //         if (PWMLevels[i]>0 & PWMLevels[i]<=16384){
+        //             PWMLevels[i]+=300;
+        //         }
+        //         else if(PWMLevels[i]+300>=16384)
+        //             PWMLevels[i]=16384; 
+        //         else{
+        //             PWMLevels[i]=3600;
+        //         }
+
+        //         pwm_set_chan_level(PWMSlices[i],PWMChannels[i],PWMLevels[i]);
+        //         mask=mask|(1u<<motorpinout[i]-1); //mask just for test
+        //         printf("Channel: %d level: %d\n",PWMChannels[i],PWMLevels[i]);
+        //     }
+        //     else
+        //     {
+        //         PWMLevels[i]=(PWMLevels[i]-1000>=0)?PWMLevels[i]-=1000:0;           
+        //         pwm_set_chan_level(PWMSlices[i],PWMChannels[i],PWMLevels[i]);
+        //     }
+        // }
+        
 
 
         // int JoyPosition=ADCread();
@@ -154,26 +209,44 @@ int main() {
         //     pwm_set_chan_level(SliceB, ChannelB, 0);
         //     pwm_set_chan_level(SliceA, ChannelA, 0);
         // }
+        sleep_ms(50);
         Blink();
     }
 }
-
+void SetPWM(short pin,short dir){
+if (dir==1){
+    if (PWMLevels[pin]>0 & PWMLevels[pin]<=16384){
+        PWMLevels[pin]+=300;
+    }
+    else if(PWMLevels[pin]+300>=16384){
+        PWMLevels[pin]=16384; 
+    }
+    else{
+        PWMLevels[pin]=3600;
+    }
+    pwm_set_chan_level(PWMSlices[pin],PWMChannels[pin],PWMLevels[pin]);              
+}
+else{
+    PWMLevels[pin]=(PWMLevels[pin]-1000>=0)?PWMLevels[pin]-=1000:0;           
+    pwm_set_chan_level(PWMSlices[pin],PWMChannels[pin],PWMLevels[pin]);
+}
+}
 void ReadGPIO(int* readgpio)
 {
     readgpio[0]=gpio_get(motor1btnA);
     readgpio[1]=gpio_get(motor1btnB);
-    readgpio[2]=gpio_get(motor2btnA);
-    readgpio[3]=gpio_get(motor2btnB);
-    readgpio[4]=gpio_get(motor3btnA);
-    readgpio[5]=gpio_get(motor3btnB);
+    readgpio[2]=gpio_get(ShoulderUpBtn);
+    readgpio[3]=gpio_get(ShoulderDownBtn);
+    readgpio[4]=gpio_get(BaseCwBtn);
+    readgpio[5]=gpio_get(BaseCcwBtn);
 }
 
+//for testing motors
 void ToMax(uint slice,uint channel){
     for (short i = 3600; i < 16384; i++)
     {
         pwm_set_chan_level(slice, channel, i); // 50%
         sleep_ms(2);
-        printf("aeebe");
         printf("%d\n",i);       
     }
     ToMin(slice, channel);
@@ -183,25 +256,21 @@ void ToMin(uint slice,uint channel){
     {
         pwm_set_chan_level(slice, channel, i); // 50%
         sleep_ms(2);
-        printf("aeee");
         printf("%d\n",i);
     }
     ToMax(slice, channel);
 }
 
-int ADCread()
+void ADCread(int *encoders)
 {
     adc_select_input(0);
-    double RawBase = adc_read();//
-    printf("base:%f\n",RawBase);
-    //printf("%.0f\n",0-(-RawBase));
+    encoders[0]=adc_read();
+    //printf("%.0f\n",encoders[0]);
     adc_select_input(1);
-    double RawShoulder= adc_read();
-    printf("shoulder:%f\n",RawShoulder);
-    return (int)RawBase;
-    //printf("%f",RawShoulder);
-
-
+    encoders[1]= adc_read();
+    adc_select_input(2);
+    // encoders[2]= adc_read();
+    // //printf("%f",RawShoulder);
 }
 void PWMMotor(uint slice,uint channel,int analogRead)
 {

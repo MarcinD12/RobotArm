@@ -9,14 +9,17 @@ This arm uses Rpi pico as controller, that controlls motors via PWM signal sent 
 - 2x Cytron Maker Drive MX1508
 - 3x Old car seat motor
 - Step-Down Converter XL4015
-- 3x AS5600 to be mounted
+- 3x AS5600
 
 ## How it works:
-Very simple steering by reading which buttons are pressed and basing on that PWM signal is sent to motor driver. The longer button is pressed then bigger is that channel duty. There is very simple algorithm that prevents from very hard breaking rotation by decrementing signal to 0.
+Very simple steering by reading which buttons are pressed and basing on that PWM signal is sent to motor driver. The longer button is pressed then higher is that channel duty. Analog signal is read from encoders and prevents moving over the limits. There is very simple algorithm that prevents from very hard breaking rotation by decrementing signal to 0.
 
 ## To do:
-- Redesign main axis mount (now is just put on bearing so it is very unstable)
-- Add encoders
+- Add encoders 2/3 done 
 - Add attachment-probably gripper
+- redesign arm parts connectors(badly designed mounting holes, too weak parts)
+- replace prototype wires
+- increase encoders accuracy(poor connections, signal is unstable)
+
 
 
